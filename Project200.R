@@ -12,7 +12,7 @@ setwd("/Users/Fancy/Google Drive/双百计划/Data")
 
 ####READ DATA####
 #Read all ONET files with score (abilities, knowledge, skills, work activities)
-allfiles <- list.files(path="ONET",full.names = TRUE)
+allfiles <- list.files(path="ONET",full.names = TRUE, all.files = FALSE)
 ONET <- lapply (allfiles, read.table, sep='\t', header=TRUE)
 names(ONET) <- list.files(path="ONET",full.names = TRUE)
 #read education
