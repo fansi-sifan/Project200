@@ -8,12 +8,12 @@ library('dplyr')
 library('reshape2')
 
 #setwd("M:/Work In Progress/Project200")
-setwd("/Users/Fancy/Google Drive/双百计划")
+setwd("/Users/Fancy/Google Drive/双百计划/Data")
 
 ####READ DATA####
 #Read all ONET files with score (abilities, knowledge, skills, work activities)
 allfiles <- list.files(path="ONET",full.names = TRUE)
-ONET <- lapply (allfiles, read.csv, sep='\t', header=TRUE)
+ONET <- lapply (allfiles, read.table, sep='\t', header=TRUE)
 names(ONET) <- list.files(path="ONET",full.names = TRUE)
 #read education
 Edu = read.table("db_21_2_text/Education, Training, and Experience.txt", sep='\t', header=TRUE)
