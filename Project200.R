@@ -6,6 +6,7 @@
 ####SET UP####
 library('dplyr')
 library('reshape2')
+library('readxl')
 
 #setwd("M:/Work In Progress/Project200")
 setwd("/Users/Fancy/Google Drive/双百计划/Data")
@@ -25,6 +26,9 @@ Tools = read.table("db_21_2_text/Tools and Technology.txt", sep='\t', header=TRU
 #read xwalk
 xwalk.CIP=read.csv('cip2soc.csv')
 xwalk.ONET=read.csv('onet2soc.csv')
+#read OES 2016 wage and employment
+OES=read_xlsx("national_M2016_dl.xlsx")
+OES=select(OES, OCC_CODE, TOT_EMP, A_MEAN,A_MEDIAN)
 
 ####Clean ONET scores####
 
@@ -64,16 +68,18 @@ ONET.score=ONET.score%>%
 
 ####xwalk from CIP to ONET####
 xwalk=left_join(xwalk.CIP, xwalk.ONET, by=c("SOC2010Code"="SOC.2010.Code"))
-xwalk=select(xwalk, -contains("SOC2010"))
 
 ####match to master database####
 ONET.master=left_join(xwalk,ONET.score, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
 ONET.master$CIP2010.Code=as.character(ONET.master$CIP2010.Code)
+ONET.master=ONET.master[!duplicated(ONET.master[,c("CIP2010.Code", "O.NET.SOC.2010.Code","Element.Name")]),]
 
 #merge education data
 ONET.master=left_join(ONET.master, ONET.Edu, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
 #merge tools data
 ONET.master=left_join(ONET.master, ONET.Tool, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
+#merge employment and wage
+ONET.master=left_join(ONET.master, OES,by=c("SOC2010Code"="OCC_CODE") )
 
 ####Qinzhou Data####
 Qinzhou=list('14.4201','15.0405','15.0406','15.0613')
