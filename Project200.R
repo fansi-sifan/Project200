@@ -9,7 +9,7 @@ library('reshape2')
 library('readxl')
 
 #setwd("M:/Work In Progress/Project200")
-setwd("/Users/Fancy/Google Drive/双百计划/Data")
+setwd("/Users/Yuqi/Google Drive/双百计划/Data")
 
 ####READ DATA####
 #Read all ONET files with score (abilities, knowledge, skills, work activities)
@@ -90,3 +90,29 @@ Qinzhou.ONET=ONET.master%>%
 ####Write results####
 write.csv(ONET.master, file='results/master.csv')
 write.csv(Qinzhou.ONET, file='results/Qinzhou.csv')
+
+
+
+### Create Appendix (note: currently the appendix table does provide the most typical technology and tools, 
+### as I think we would need to read through the list of all technology and tools, and pick a few to write)
+head(Qinzhou.ONET)
+#create combined "elements", and reshape it into wide format
+df.elements <- ddply(Qinzhou.ONET, .(O.NET.SOC.2010.Code, Measure), summarize, Elements = paste(Element.Name, collapse = ", "))
+df.elements <- dcast(df.elements,O.NET.SOC.2010.Code ~ Measure, value.var='Elements')
+#reshape other variabels into wide format
+df.everythingelse <- dcast(Qinzhou.ONET, O.NET.SOC.2010.Code +
+                                          TOT_EMP + A_MEAN + A_MEDIAN +
+                                          OJ + PT + RL + RW +
+                                          Technology + Tools ~ Measure, value.var='Element.Name', length)
+df.everythingelse <- df.everythingelse[c("O.NET.SOC.2010.Code",
+                                          "TOT_EMP", "A_MEAN", "A_MEDIAN",
+                                         "OJ", "PT", "RL", "RW")]
+#merge
+df.appendix <- full_join(df.everythingelse, df.elements, by = "O.NET.SOC.2010.Code")
+
+#transpose
+df.appendix <- t(df.appendix)
+
+####Write results####
+write.csv(df.appendix, file='results/Qinzhou_Appendix.csv')
+
