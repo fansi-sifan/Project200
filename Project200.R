@@ -7,9 +7,11 @@
 library('dplyr')
 library('reshape2')
 library('readxl')
+library('plyr')
 
 #setwd("M:/Work In Progress/Project200")
-setwd("/Users/Yuqi/Google Drive/双百计划/Data")
+#setwd("/Users/Yuqi/Google Drive/双百计划/Data")
+setwd("/Users/Fancy/Google Drive/双百计划/Data")
 
 ####READ DATA####
 #Read all ONET files with score (abilities, knowledge, skills, work activities)
@@ -100,18 +102,18 @@ head(Qinzhou.ONET)
 df.elements <- ddply(Qinzhou.ONET, .(O.NET.SOC.2010.Code, Measure), summarize, Elements = paste(Element.Name, collapse = ", "))
 df.elements <- dcast(df.elements,O.NET.SOC.2010.Code ~ Measure, value.var='Elements')
 #reshape other variabels into wide format
-df.everythingelse <- dcast(Qinzhou.ONET, O.NET.SOC.2010.Code +
+df.everythingelse <- dcast(Qinzhou.ONET, O.NET.SOC.2010.Code + O.NET.SOC.2010.Title+
                                           TOT_EMP + A_MEAN + A_MEDIAN +
                                           OJ + PT + RL + RW +
                                           Technology + Tools ~ Measure, value.var='Element.Name', length)
-df.everythingelse <- df.everythingelse[c("O.NET.SOC.2010.Code",
+df.everythingelse <- df.everythingelse[c("O.NET.SOC.2010.Code","O.NET.SOC.2010.Title",
                                           "TOT_EMP", "A_MEAN", "A_MEDIAN",
                                          "OJ", "PT", "RL", "RW")]
 #merge
 df.appendix <- full_join(df.everythingelse, df.elements, by = "O.NET.SOC.2010.Code")
 
 #transpose
-df.appendix <- t(df.appendix)
+#df.appendix <- t(df.appendix)
 
 ####Write results####
 write.csv(df.appendix, file='results/Qinzhou_Appendix.csv')
