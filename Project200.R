@@ -4,10 +4,10 @@
 #2017.5.4
 
 ####SET UP####
+
 library('dplyr')
 library('reshape2')
 library('readxl')
-library('plyr')
 
 #setwd("M:/Work In Progress/Project200")
 #setwd("/Users/Yuqi/Google Drive/双百计划/Data")
@@ -46,7 +46,7 @@ ONET.Edu[2:5]=lapply(ONET.Edu[2:5],as.integer)
 
 #Count number of tools and technology
 ONET.Tool=Tools%>%group_by(O.NET.SOC.Code, T2.Type)%>%
-  summarise(freq=n())%>%
+  summarize(freq=n())%>%
   ungroup()%>%
   dcast(O.NET.SOC.Code ~ T2.Type, value.var='freq', mean)
 
@@ -83,19 +83,22 @@ ONET.master=left_join(ONET.master, ONET.Tool, by=c("O.NET.SOC.2010.Code"="O.NET.
 #merge employment and wage
 ONET.master=left_join(ONET.master, OES,by=c("SOC2010Code"="OCC_CODE") )
 
-####Qinzhou Data####
-Qinzhou=list('14.4201','15.0405','15.0406','15.0613')
-Qinzhou.ONET=ONET.master%>%
-  filter(CIP2010.Code %in% Qinzhou)%>%
-  unique()
+#### 13 Majors Data####
+majors=read.csv("ch2cip.csv", colClasses = "character")
+Major=apply(majors[3:16],1,as.list)
+names(Major)=majors$Code
 
-####Write results####
-write.csv(ONET.master, file='results/master.csv')
-write.csv(Qinzhou.ONET, file='results/Qinzhou.csv')
+TEST=list('14.4201','15.0405','15.0406','15.0613')
 
+for (i in 1:13){
+  Major[[i]]=ONET.master%>%
+    filter(CIP2010.Code %in% Major[[i]])%>%
+    unique()
+  write.csv(Major[[i]],file=paste0('results/all majors/', names(Major)[i],'.csv'))
+}
 
-
-### Create Appendix (note: currently the appendix table does provide the most typical technology and tools, 
+#### Create Appendix #####
+#(note: currently the appendix table does provide the most typical technology and tools, 
 ### as I think we would need to read through the list of all technology and tools, and pick a few to write)
 head(Qinzhou.ONET)
 #create combined "elements", and reshape it into wide format
