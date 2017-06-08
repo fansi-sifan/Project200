@@ -64,7 +64,7 @@ Measures <-list ("Abilities","Knowledge", "Skills", "WorkActivities")
 ONET.score=Map(cbind, ONET.score, Measure=Measures)
 ONET.score=do.call("rbind",ONET.score)
 ONET.score=ONET.score%>%
-  arrange(O.NET.SOC.Code, Measure, Data.Value)%>%
+  arrange(O.NET.SOC.Code, Measure, desc(Data.Value))%>%
   select(O.NET.SOC.Code, Measure, Element.Name, Data.Value, Date)
 
 
@@ -101,6 +101,11 @@ for (i in 1:13){
   write.csv(Major[[i]],file=paste0('results/all majors/', names(Major)[i],'.csv'))
 }
 
+
+
+
+###
+
 #### Create Appendix #####
 #(note: currently the appendix table does provide the most typical technology and tools, 
 ### as I think we would need to read through the list of all technology and tools, and pick a few to write)
@@ -124,6 +129,6 @@ df.appendix <- full_join(df.everythingelse, df.elements, by = "O.NET.SOC.2010.Co
 
 
 
-####Write results####
+#### Write results####
 write.csv(df.appendix, file='results/Qinzhou_Appendix.csv')
 
