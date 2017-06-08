@@ -93,7 +93,11 @@ TEST=list('14.4201','15.0405','15.0406','15.0613')
 for (i in 1:13){
   Major[[i]]=ONET.master%>%
     filter(CIP2010.Code %in% Major[[i]])%>%
-    unique()
+    unique()%>%
+#filter
+#RW<=6 working experience fewer than 2 years
+#RL<=6 required level of eduation sub-BA
+    filter(RL<=6 & RW <=6)
   write.csv(Major[[i]],file=paste0('results/all majors/', names(Major)[i],'.csv'))
 }
 
@@ -117,6 +121,8 @@ df.appendix <- full_join(df.everythingelse, df.elements, by = "O.NET.SOC.2010.Co
 
 #transpose
 #df.appendix <- t(df.appendix)
+
+
 
 ####Write results####
 write.csv(df.appendix, file='results/Qinzhou_Appendix.csv')
