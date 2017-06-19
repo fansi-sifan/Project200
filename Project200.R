@@ -8,6 +8,7 @@
 library('dplyr')
 library('reshape2')
 library('readxl')
+library('xlsx')
 
 #setwd("M:/Work In Progress/Project200")
 #setwd("/Users/Yuqi/Google Drive/双百计划/Data")
@@ -90,21 +91,18 @@ names(Major)=majors$Code
 
 TEST=list('14.4201','15.0405','15.0406','15.0613')
 
+All_major=Major
 for (i in 1:13){
-  Major[[i]]=ONET.master%>%
+  All_major[[i]]=ONET.master%>%
     filter(CIP2010.Code %in% Major[[i]])%>%
     unique()%>%
 #filter
 #RW<=6 working experience fewer than 2 years
 #RL<=6 required level of eduation sub-BA
     filter(RL<=6 & RW <=6)
-  write.csv(Major[[i]],file=paste0('results/all majors/', names(Major)[i],'.csv'))
+  write.xlsx(All_major[[i]], file='results/all majors/all.xlsx', names(Major)[i], append = TRUE)
+  #write.csv(Major[[i]],file=paste0('results/all majors/', names(Major)[i],'.csv'))
 }
-
-
-
-
-###
 
 #### Create Appendix #####
 #(note: currently the appendix table does provide the most typical technology and tools, 
