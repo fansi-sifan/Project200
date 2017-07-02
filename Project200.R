@@ -107,6 +107,7 @@ for (i in 1:13){
 
 Text_major=ONET.master%>%
   filter(CIP2010.Code %in% unlist(Major))%>%
+  filter(RL<=6 & RW <=6)%>%
   unique()%>%
   select(CIP2010.Code, O.NET.SOC.2010.Title, Measure, Element.Name, Data.Value, OJ, PT)
 
