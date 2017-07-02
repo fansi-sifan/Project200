@@ -88,9 +88,6 @@ ONET.master=left_join(ONET.master, OES,by=c("SOC2010Code"="OCC_CODE") )
 majors=read.csv("ch2cip.csv", colClasses = "character")
 Major=apply(majors[3:16],1,as.list)
 names(Major)=majors$Code
-
-TEST=list('14.4201','15.0405','15.0406','15.0613')
-
 All_major=Major
 for (i in 1:13){
   All_major[[i]]=ONET.master%>%
@@ -101,31 +98,29 @@ for (i in 1:13){
 #RL<=6 required level of eduation sub-BA
     filter(RL<=6 & RW <=6)
   write.xlsx(All_major[[i]], file='results/all majors/all.xlsx', names(Major)[i], append = TRUE)
+  #write to separate csv file
   #write.csv(Major[[i]],file=paste0('results/all majors/', names(Major)[i],'.csv'))
 }
 
-#### Create Appendix #####
-#(note: currently the appendix table does provide the most typical technology and tools, 
-### as I think we would need to read through the list of all technology and tools, and pick a few to write)
-head(Qinzhou.ONET)
-#create combined "elements", and reshape it into wide format
-df.elements <- ddply(Qinzhou.ONET, .(O.NET.SOC.2010.Code, Measure), summarize, Elements = paste(Element.Name, collapse = ", "))
-df.elements <- dcast(df.elements,O.NET.SOC.2010.Code ~ Measure, value.var='Elements')
-#reshape other variabels into wide format
-df.everythingelse <- dcast(Qinzhou.ONET, O.NET.SOC.2010.Code + O.NET.SOC.2010.Title+
-                                          TOT_EMP + A_MEAN + A_MEDIAN +
-                                          OJ + PT + RL + RW +
-                                          Technology + Tools ~ Measure, value.var='Element.Name', length)
-df.everythingelse <- df.everythingelse[c("O.NET.SOC.2010.Code","O.NET.SOC.2010.Title",
-                                          "TOT_EMP", "A_MEAN", "A_MEDIAN",
-                                         "OJ", "PT", "RL", "RW")]
-#merge
-df.appendix <- full_join(df.everythingelse, df.elements, by = "O.NET.SOC.2010.Code")
 
-#transpose
-#df.appendix <- t(df.appendix)
+#### write to text, summarize different majors in text ####
 
+Text_major=ONET.master%>%
+  filter(CIP2010.Code %in% unlist(Major))%>%
+  unique()%>%
+  select(CIP2010.Code, O.NET.SOC.2010.Title, Measure, Element.Name, Data.Value, OJ, PT)
 
+Text=Text_major%>%group_by(CIP2010.Code, O.NET.SOC.2010.Title, Measure)%>%
+  summarise(Elements=paste(Element.Name, collapse=","), 
+            OJ=mean(OJ),
+            PT=mean(PT))%>%
+  filter(!is.na(Measure))
+
+Text_wide=dcast(Text, CIP2010.Code+O.NET.SOC.2010.Title+OJ+PT ~ Measure, value.var="Elements")
+
+cat(paste(Text_wide$CIP2010.Code, "的工作任务包括",Text_wide$WorkActivities,
+            "。按重要性排列，要求掌握的技能有",Text_wide$Skills,
+            "；知识包括",Text_wide$Knowledge,"。","\n"),file="output.txt", sep="\n", append=FALSE)
 
 #### Write results####
 write.csv(df.appendix, file='results/Qinzhou_Appendix.csv')
