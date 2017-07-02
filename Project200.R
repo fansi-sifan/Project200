@@ -3,7 +3,7 @@
 #Sifan Liu
 #2017.5.4
 
-####SET UP####
+#### SET UP####
 
 library('dplyr')
 library('reshape2')
@@ -14,7 +14,7 @@ library('xlsx')
 #setwd("/Users/Yuqi/Google Drive/双百计划/Data")
 setwd("/Users/Fancy/Google Drive/双百计划/Data")
 
-####READ DATA####
+#### READ DATA####
 #Read all ONET files with score (abilities, knowledge, skills, work activities)
 allfiles <- list.files(path="ONET",full.names = TRUE, all.files = FALSE)
 ONET <- lapply (allfiles, read.table, sep='\t', header=TRUE)
@@ -33,7 +33,7 @@ xwalk.ONET=read.csv('onet2soc.csv')
 OES=read_xlsx("national_M2016_dl.xlsx")
 OES=select(OES, OCC_CODE, TOT_EMP, A_MEAN,A_MEDIAN)
 
-####Clean ONET scores####
+#### Clean ONET scores####
 
 #Keep the education level with highest frequency (mode)
 ONET.Edu=Edu%>%
@@ -69,10 +69,10 @@ ONET.score=ONET.score%>%
   select(O.NET.SOC.Code, Measure, Element.Name, Data.Value, Date)
 
 
-####xwalk from CIP to ONET####
+#### xwalk from CIP to ONET####
 xwalk=left_join(xwalk.CIP, xwalk.ONET, by=c("SOC2010Code"="SOC.2010.Code"))
 
-####match to master database####
+#### match to master database####
 ONET.master=left_join(xwalk,ONET.score, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
 ONET.master$CIP2010.Code=as.character(ONET.master$CIP2010.Code)
 ONET.master=ONET.master[!duplicated(ONET.master[,c("CIP2010.Code", "O.NET.SOC.2010.Code","Element.Name")]),]
@@ -118,7 +118,7 @@ Text=Text_major%>%group_by(CIP2010.Code, O.NET.SOC.2010.Title, Measure)%>%
 
 Text_wide=dcast(Text, CIP2010.Code+O.NET.SOC.2010.Title+OJ+PT ~ Measure, value.var="Elements")
 
-cat(paste(Text_wide$CIP2010.Code, "的工作任务包括",Text_wide$WorkActivities,
+cat(paste(Text_wide$O.NET.SOC.2010.Title, "的工作任务包括",Text_wide$WorkActivities,
             "。按重要性排列，要求掌握的技能有",Text_wide$Skills,
             "；知识包括",Text_wide$Knowledge,"。","\n"),file="output.txt", sep="\n", append=FALSE)
 
