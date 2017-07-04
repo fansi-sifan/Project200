@@ -111,15 +111,26 @@ Text_major=ONET.master%>%
   unique()%>%
   select(CIP2010.Code, O.NET.SOC.2010.Title, Measure, Element.Name, Data.Value, OJ, PT)
 
-Text=Text_major%>%group_by(CIP2010.Code, O.NET.SOC.2010.Title, Measure)%>%
-  summarise(Elements=paste(Element.Name, collapse=","), 
+##YL: export text_major in a csv file, use index/match to find the translation, read in Text_translated
+write.csv(Text_major, file='results/Text_major.csv')
+
+##YL note to SL: line 92-100生成的spreadsheet “all.xlsx”里的“PHREGN”tab里只有一个专业51.0805，对应的职位是Pharmacy Technicians
+##但line 92-100生成的spreadsheet“PHREGN.csv”里只有51.2006专业，对应的职位是Pharmacists。我之前用google sheet翻译的时候只翻译了51.2006，并没有翻译51.0805。
+##所以我在翻译line108-112生成的spreadsheet是发现了这个问题。翻译来讲问题不大，我补翻了几个词就行【已做】。只是想make a note，你用空看看line 92-100有没有小bug？
+##我感觉“all.xlsx”和line108-112生成的spreadsheet应该是一样的，只是不知道为什么“all.xlsx”和“PHREGN.csv”会有出入。
+
+Text_major_translated=read_xlsx("results/Text_major_with_translation.xlsx")
+Text_major_translated=Text_major_translated[c(-1)]
+
+Text=Text_major_translated%>%group_by(CIP2010.Code, O.NET.SOC.2010.Title.Translate, Measure)%>%
+  summarise(Elements=paste(Element.Name.Translate, collapse=","), 
             OJ=mean(OJ),
             PT=mean(PT))%>%
   filter(!is.na(Measure))
 
-Text_wide=dcast(Text, CIP2010.Code+O.NET.SOC.2010.Title+OJ+PT ~ Measure, value.var="Elements")
+Text_wide=dcast(Text, CIP2010.Code+O.NET.SOC.2010.Title.Translate+OJ+PT ~ Measure, value.var="Elements")
 
-cat(paste(Text_wide$O.NET.SOC.2010.Title, "的工作任务包括",Text_wide$WorkActivities,
+cat(paste(Text_wide$CIP2010.Code, Text_wide$O.NET.SOC.2010.Title.Translate, "的工作任务包括",Text_wide$WorkActivities,
             "。按重要性排列，要求掌握的技能有",Text_wide$Skills,
             "；知识包括",Text_wide$Knowledge,"。","\n"),file="output.txt", sep="\n", append=FALSE)
 
