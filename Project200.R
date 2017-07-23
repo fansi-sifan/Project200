@@ -14,6 +14,7 @@ library('xlsx')
 #setwd("/Users/Yuqi/Google Drive/双百计划/Data")
 setwd("/Users/Fancy/Google Drive/双百计划/Data")
 
+#中文编码
 Sys.setlocale("LC_ALL", 'en_US.UTF-8')
 
 #### READ DATA####
@@ -88,7 +89,7 @@ ONET.master=left_join(ONET.master, OES,by=c("SOC2010Code"="OCC_CODE") )
 
 #### 13 Majors Data####
 majors=read.csv("ch2cip.csv", colClasses = "character")
-Major=apply(majors[3:16],1,as.list)
+Major=apply(majors[2:15],1,as.list)
 names(Major)=majors$Code
 All_major=Major
 for (i in 1:13){
@@ -96,9 +97,8 @@ for (i in 1:13){
     filter(CIP2010.Code %in% Major[[i]])%>%
     unique()%>%
 #filter
-#RW<=6 working experience fewer than 2 years
 #RL<=6 required level of eduation sub-BA
-    filter(RL<=6 & RW <=6)
+    filter(RL<=6)
   write.xlsx(All_major[[i]], file='results/all majors/all.xlsx', names(Major)[i], append = TRUE)
   #write to separate csv file
   #write.csv(Major[[i]],file=paste0('results/all majors/', names(Major)[i],'.csv'))
@@ -107,15 +107,45 @@ for (i in 1:13){
 
 #### write to text, summarize different majors in text ####
 
-Text_major=ONET.master%>%
-  filter(CIP2010.Code %in% unlist(Major))%>%
-  filter(RL<=6 & RW <=6)%>%
+major2CIP=melt(majors, id="Code")
+major2CIP=major2CIP%>%select(Code, value)%>%filter(value!="")%>%group_by(Code, value)
+
+Text_major=left_join(major2CIP, ONET.master,by=c("value"="CIP2010.Code"))
+
+Text_major=Text_major%>%
+  filter(RL<=6)%>%
   unique()%>%
-  select(CIP2010.Code, O.NET.SOC.2010.Title, Measure, Element.Name, Data.Value, OJ, PT)
+  select(Code,value, O.NET.SOC.2010.Title, Measure, Element.Name, Data.Value, OJ, PT, RW, TOT_EMP, A_MEAN, A_MEDIAN)
+
+#Original Version
+Text=Text_major%>%group_by(Code,O.NET.SOC.2010.Title, Measure, OJ, PT, RW, TOT_EMP, A_MEAN, A_MEDIAN)%>%
+  summarise(Elements=paste(Element.Name, collapse=","))%>%
+  filter(!is.na(Measure))
+
+Text_wide=dcast(Text, Code+O.NET.SOC.2010.Title+OJ+PT+RW+TOT_EMP+A_MEAN+A_MEDIAN ~ Measure, value.var="Elements")
+Text_wide$A_MEAN=as.numeric(Text_wide$A_MEAN)
+
+#assign categories for wage, working experience requirement, on-job training time
+attach(Text_wide)
+Text_wide$wagecat[A_MEAN >150000] <- "15万-20万"
+Text_wide$wagecat[A_MEAN >100000 & A_MEAN <= 150000] <- "10万-15万"
+Text_wide$wagecat[A_MEAN >50000 & A_MEAN <= 100000] <- "5万-10万"
+Text_wide$wagecat[A_MEAN <50000] <- "5万以下"
+
+Text_wide$RWcat[RW==11] <- "高级，10年以上"
+Text_wide$RWcat[RW>=7 & RW <11] <- "中级，2-8年"
+Text_wide$RWcat[RW<7] <- "初级，2年以下"
+
+Text_wide$OJcat[OJ>=6] <- "1年以上"
+Text_wide$OJcat[OJ>3 & OJ <6] <- "3-12月"
+Text_wide$OJcat[OJ<=3] <- "0-3月"
+
+detach(Text_wide)
+
+#Chinese Version
 
 ##YL: export text_major in a csv file, use index/match to find the translation, read in Text_translated
 write.csv(Text_major, file='results/Text_major.csv')
-
 
 Text_major_translated=read_xlsx("results/Text_major_with_translation.xlsx")
 Text_major_translated=Text_major_translated[c(-1)]
@@ -128,10 +158,10 @@ Text=Text_major_translated%>%group_by(CIP2010.Code, O.NET.SOC.2010.Title.Transla
 
 Text_wide=dcast(Text, CIP2010.Code+O.NET.SOC.2010.Title.Translate+OJ+PT ~ Measure, value.var="Elements")
 
+
+#Write to result
 cat(paste0(Text_wide$CIP2010.Code, Text_wide$O.NET.SOC.2010.Title.Translate, "的工作任务包括",Text_wide$WorkActivities,
             "。按重要性排列，要求掌握的技能有",Text_wide$Skills,
             "；知识包括",Text_wide$Knowledge,"。","\n"),file="output.txt", sep="\n", append=FALSE)
 
-#### Write results####
-write.csv(df.appendix, file='results/Qinzhou_Appendix.csv')
 
