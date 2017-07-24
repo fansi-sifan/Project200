@@ -87,15 +87,6 @@ CIP_ONET.master=left_join(CIP_ONET.master, ONET.Tool, by=c("O.NET.SOC.2010.Code"
 #merge employment and wage
 CIP_ONET.master=left_join(CIP_ONET.master, OES,by=c("SOC2010Code"="OCC_CODE") )
 
-#CREATE unique ONET data
-ONET.master=CIP_ONET.master%>%
-  select(-CIP2010.Code, -CIP2010Title, -SOC2010Code, -SOC2010Title)%>%
-  unique()%>%
-  group_by(O.NET.SOC.2010.Code, O.NET.SOC.2010.Title,Measure, OJ, PT, RW,RL,TOT_EMP, A_MEAN, A_MEDIAN)%>%
-  summarise(Elements=paste(Element.Name, collapse=","))%>%
-  filter(!is.na(Measure))%>%
-  ungroup()
-
 #### 13 Majors Data####
 majors=read.csv("ch2cip.csv", colClasses = "character")
 Major=apply(majors[2:15],1,as.list)
@@ -125,8 +116,24 @@ major2ONET=major2ONET%>%
   select(Code,O.NET.SOC.2010.Code)%>%
   unique()
 
+#CREATE unique ONET data
+ONET.master=CIP_ONET.master%>%
+  select(-CIP2010.Code, -CIP2010Title, -SOC2010Code, -SOC2010Title)%>%
+  unique()
+ONET.master_wide=ONET.master%>%
+  group_by(O.NET.SOC.2010.Code, O.NET.SOC.2010.Title,Measure, OJ, PT, RW,RL,TOT_EMP, A_MEAN, A_MEDIAN)%>%
+  summarise(Elements=paste(Element.Name, collapse=","))%>%
+  filter(!is.na(Measure))%>%
+  ungroup()
+
+Text_major=ONET.master%>%
+  filter(RL<=6)%>%
+  filter(O.NET.SOC.2010.Code %in% major2ONET$O.NET.SOC.2010.Code)%>%
+  unique()%>%
+  select(-Technology, -Tools)
+
 #merge ONET.master data to Chinese majors  
-Text=unique(left_join(major2ONET, ONET.master, by="O.NET.SOC.2010.Code"))
+Text=unique(left_join(major2ONET, ONET.master_wide, by="O.NET.SOC.2010.Code"))
 Text=filter(Text, RL<=6)
 
 Text_wide=dcast(Text, Code+O.NET.SOC.2010.Title+OJ+PT+RW+TOT_EMP+A_MEAN+A_MEDIAN ~ Measure, value.var="Elements")
