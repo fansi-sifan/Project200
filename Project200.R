@@ -76,16 +76,25 @@ ONET.score=ONET.score%>%
 xwalk=left_join(xwalk.CIP, xwalk.ONET, by=c("SOC2010Code"="SOC.2010.Code"))
 
 #### match to master database####
-ONET.master=left_join(xwalk,ONET.score, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
-ONET.master$CIP2010.Code=as.character(ONET.master$CIP2010.Code)
-ONET.master=ONET.master[!duplicated(ONET.master[,c("CIP2010.Code", "O.NET.SOC.2010.Code","Element.Name")]),]
+CIP_ONET.master=left_join(xwalk,ONET.score, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
+CIP_ONET.master$CIP2010.Code=as.character(CIP_ONET.master$CIP2010.Code)
+CIP_ONET.master=CIP_ONET.master[!duplicated(CIP_ONET.master[,c("CIP2010.Code", "O.NET.SOC.2010.Code","Element.Name")]),]
 
 #merge education data
-ONET.master=left_join(ONET.master, ONET.Edu, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
+CIP_ONET.master=left_join(CIP_ONET.master, ONET.Edu, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
 #merge tools data
-ONET.master=left_join(ONET.master, ONET.Tool, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
+CIP_ONET.master=left_join(CIP_ONET.master, ONET.Tool, by=c("O.NET.SOC.2010.Code"="O.NET.SOC.Code"))
 #merge employment and wage
-ONET.master=left_join(ONET.master, OES,by=c("SOC2010Code"="OCC_CODE") )
+CIP_ONET.master=left_join(CIP_ONET.master, OES,by=c("SOC2010Code"="OCC_CODE") )
+
+#CREATE unique ONET data
+ONET.master=CIP_ONET.master%>%
+  select(-CIP2010.Code, -CIP2010Title, -SOC2010Code, -SOC2010Title)%>%
+  unique()%>%
+  group_by(O.NET.SOC.2010.Code, O.NET.SOC.2010.Title,Measure, OJ, PT, RW,RL,TOT_EMP, A_MEAN, A_MEDIAN)%>%
+  summarise(Elements=paste(Element.Name, collapse=","))%>%
+  filter(!is.na(Measure))%>%
+  ungroup()
 
 #### 13 Majors Data####
 majors=read.csv("ch2cip.csv", colClasses = "character")
@@ -93,7 +102,7 @@ Major=apply(majors[2:15],1,as.list)
 names(Major)=majors$Code
 All_major=Major
 for (i in 1:13){
-  All_major[[i]]=ONET.master%>%
+  All_major[[i]]=CIP_ONET.master%>%
     filter(CIP2010.Code %in% Major[[i]])%>%
     unique()%>%
 #filter
@@ -107,20 +116,18 @@ for (i in 1:13){
 
 #### write to text, summarize different majors in text ####
 
+#create xwalk, from chinese major to ONET
 major2CIP=melt(majors, id="Code")
 major2CIP=major2CIP%>%select(Code, value)%>%filter(value!="")%>%group_by(Code, value)
+major2ONET=unique(left_join(major2CIP, CIP_ONET.master[1:5],by=c("value"="CIP2010.Code")))
+major2ONET=major2ONET%>%
+  ungroup()%>%
+  select(Code,O.NET.SOC.2010.Code)%>%
+  unique()
 
-Text_major=left_join(major2CIP, ONET.master,by=c("value"="CIP2010.Code"))
-
-Text_major=Text_major%>%
-  filter(RL<=6)%>%
-  unique()%>%
-  select(Code,value, O.NET.SOC.2010.Title, Measure, Element.Name, Data.Value, OJ, PT, RW, TOT_EMP, A_MEAN, A_MEDIAN)
-
-#Original Version
-Text=Text_major%>%group_by(Code,O.NET.SOC.2010.Title, Measure, OJ, PT, RW, TOT_EMP, A_MEAN, A_MEDIAN)%>%
-  summarise(Elements=paste(Element.Name, collapse=","))%>%
-  filter(!is.na(Measure))
+#merge ONET.master data to Chinese majors  
+Text=unique(left_join(major2ONET, ONET.master, by="O.NET.SOC.2010.Code"))
+Text=filter(Text, RL<=6)
 
 Text_wide=dcast(Text, Code+O.NET.SOC.2010.Title+OJ+PT+RW+TOT_EMP+A_MEAN+A_MEDIAN ~ Measure, value.var="Elements")
 Text_wide$A_MEAN=as.numeric(Text_wide$A_MEAN)
