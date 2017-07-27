@@ -132,8 +132,14 @@ Text_major=ONET.master%>%
   unique()%>%
   select(-Technology, -Tools)
 
+Text_major_wide=Text_major%>%
+  group_by(O.NET.SOC.2010.Code, O.NET.SOC.2010.Title,Measure, OJ, PT, RW,RL,TOT_EMP, A_MEAN, A_MEDIAN)%>%
+  summarise(Elements=paste(Element.Name, collapse=","))%>%
+  filter(!is.na(Measure))%>%
+  ungroup()
+
 #merge ONET.master data to Chinese majors  
-Text=unique(left_join(major2ONET, ONET.master_wide, by="O.NET.SOC.2010.Code"))
+Text=unique(left_join(major2ONET, Text_major_wide, by="O.NET.SOC.2010.Code"))
 Text=filter(Text, RL<=6)
 
 Text_wide=dcast(Text, Code+O.NET.SOC.2010.Title+OJ+PT+RW+TOT_EMP+A_MEAN+A_MEDIAN ~ Measure, value.var="Elements")
@@ -156,26 +162,92 @@ Text_wide$OJcat[OJ<=3] <- "0-3月"
 
 detach(Text_wide)
 
-#Chinese Version
-
-##YL: export text_major in a csv file, use index/match to find the translation, read in Text_translated
-write.csv(Text_major, file='results/Text_major.csv')
-
-Text_major_translated=read_xlsx("results/Text_major_with_translation.xlsx")
-Text_major_translated=Text_major_translated[c(-1)]
-
-Text=Text_major_translated%>%group_by(CIP2010.Code, O.NET.SOC.2010.Title.Translate, Measure)%>%
-  summarise(Elements=paste(Element.Name.Translate, collapse=","), 
-            OJ=mean(OJ),
-            PT=mean(PT))%>%
-  filter(!is.na(Measure))
-
-Text_wide=dcast(Text, CIP2010.Code+O.NET.SOC.2010.Title.Translate+OJ+PT ~ Measure, value.var="Elements")
 
 
-#Write to result
-cat(paste0(Text_wide$CIP2010.Code, Text_wide$O.NET.SOC.2010.Title.Translate, "的工作任务包括",Text_wide$WorkActivities,
-            "。按重要性排列，要求掌握的技能有",Text_wide$Skills,
-            "；知识包括",Text_wide$Knowledge,"。","\n"),file="output.txt", sep="\n", append=FALSE)
+
+#######Yuqi Liao -> creating appendix
+
+##create and export csv files, use google translation, modify translation
+Text_wide_uniqueSOC = Text_wide[!duplicated(Text_wide$O.NET.SOC.2010.Title), ] #so i could get the unique columns of SOC titles
+Text_major_uniqueElement.Name = Text_major[!duplicated(Text_major$Element.Name),c("Measure","Element.Name")] #so i could get the unique columns of Element.Name
+write.csv(Text_wide_uniqueSOC, file = 'results/Text_wide_uniqueSOC.csv')
+write.csv(Text_major_uniqueElement.Name, file = 'results/Text_major_uniqueElement.Name.csv')
+
+##create Text_wide_uniqueSOC.translated & Text_major_uniqueElement.Name.translated
+Text_wide_uniqueSOC.translated <- read.csv("/Users/Yuqi/Google Drive/双百计划/Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Text_wide_uniqueSOC.translated.csv")
+Text_major_uniqueElement.Name.translated <- read.csv("/Users/Yuqi/Google Drive/双百计划/Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Text_major_uniqueElement.Name.translated.csv")
+Text_wide_uniqueSOC.translated <- Text_wide_uniqueSOC.translated[,c("O.NET.SOC.2010.Title","Final.Translation")]
+
+##creat Text_major.translated
+Text_major.translated=left_join(Text_major, Text_major_uniqueElement.Name.translated, by="Element.Name") %>%
+  select(-X, -Measure.y, -Google.Translation)
+colnames(Text_major.translated)[colnames(Text_major.translated) == 'Final.Translation'] <- 'Element.Name.Translation'
+
+Text_major.translated = left_join(Text_major.translated, Text_wide_uniqueSOC.translated, by = "O.NET.SOC.2010.Title")
+colnames(Text_major.translated)[colnames(Text_major.translated) == 'Final.Translation'] <- 'O.NET.SOC.2010.Title.Translation'
+
+colnames(Text_major.translated)[colnames(Text_major.translated) == 'Measure.x'] <- 'Measure'
+
+##create Text_major_wide.translated
+Text_major_wide.translated=Text_major.translated%>%
+  group_by(O.NET.SOC.2010.Code, O.NET.SOC.2010.Title, O.NET.SOC.2010.Title.Translation, Measure, OJ, PT, RW,RL,TOT_EMP, A_MEAN, A_MEDIAN)%>%
+  summarise(Elements=paste(Element.Name.Translation, collapse=","))%>%
+  filter(!is.na(Measure))%>%
+  ungroup()
+
+
+##created Text.translated
+Text.translated=unique(left_join(major2ONET, Text_major_wide.translated, by="O.NET.SOC.2010.Code"))
+Text.translated=filter(Text.translated, RL<=6)
+
+##create text_wide.translate
+Text_wide.translated=dcast(Text.translated, Code+O.NET.SOC.2010.Title+O.NET.SOC.2010.Title.Translation+OJ+PT+RW+TOT_EMP+A_MEAN+A_MEDIAN ~ Measure, value.var="Elements")
+Text_wide.translated$A_MEAN=as.numeric(Text_wide.translated$A_MEAN)
+
+#assign categories for wage, working experience requirement, on-job training time
+attach(Text_wide.translated)
+Text_wide.translated$wagecat[A_MEAN >150000] <- "15万-20万"
+Text_wide.translated$wagecat[A_MEAN >100000 & A_MEAN <= 150000] <- "10万-15万"
+Text_wide.translated$wagecat[A_MEAN >50000 & A_MEAN <= 100000] <- "5万-10万"
+Text_wide.translated$wagecat[A_MEAN <50000] <- "5万以下"
+
+Text_wide.translated$RWcat[RW==11] <- "高级，10年以上"
+Text_wide.translated$RWcat[RW>=7 & RW <11] <- "中级，2-8年"
+Text_wide.translated$RWcat[RW<7] <- "初级，2年以下"
+
+Text_wide.translated$OJcat[OJ>=6] <- "1年以上"
+Text_wide.translated$OJcat[OJ>3 & OJ <6] <- "3-12月"
+Text_wide.translated$OJcat[OJ<=3] <- "0-3月"
+
+detach(Text_wide.translated)
+
+
+##create Text_wide.translated$Code.Translation
+Code.translation <- read.csv("/Users/Yuqi/Google Drive/双百计划/Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Code and Translation.csv")
+
+Text_wide.translated = left_join(Text_wide.translated, Code.translation, by = "Code")
+
+##Write to result
+#intro paragraph for each chinese major (Code.Translation)
+Text_wide.translated.aggregate.SOC <- aggregate(O.NET.SOC.2010.Title.Translation ~ Code.Translation , data = Text_wide.translated, paste, collapse = ", ")
+Text_wide.translated.aggregate.wagecat <- aggregate(wagecat ~ Code.Translation , data = Text_wide.translated, paste, collapse = ", ")
+Text_wide.translated.aggregate.RWcat <- aggregate(RWcat ~ Code.Translation , data = Text_wide.translated, paste, collapse = ", ")
+Text_wide.translated.aggregate.OJcat <- aggregate(OJcat ~ Code.Translation , data = Text_wide.translated, paste, collapse = ", ")
+Text_wide.translated.1.para <- left_join(Text_wide.translated.aggregate.SOC, Text_wide.translated.aggregate.wagecat, by = "Code.Translation")
+Text_wide.translated.1.para <- left_join(Text_wide.translated.1.para, Text_wide.translated.aggregate.RWcat, by = "Code.Translation")
+Text_wide.translated.1.para <- left_join(Text_wide.translated.1.para, Text_wide.translated.aggregate.OJcat, by = "Code.Translation")
+
+cat(paste0("以美国2015年的数据为例", Text_wide.translated.1.para$Code.Translation, "所对应的主要就业岗位包括", Text_wide.translated.1.para$O.NET.SOC.2010.Title.Translation,
+           "。根据美国职业信息库的调查，这些岗位的平均所需要的培训时间为", Text_wide.translated.1.para$OJcat, "。这些岗位所要求的相关工作经验为",Text_wide.translated.1.para$RWcat,"。在美国平均工资区间为", Text_wide.translated.1.para$wagcat, "。这些岗位在中国的平均工资区间为。","\n"),file="firstparagraph.txt", sep="\n", append=FALSE)
+
+
+#paragraph for each SOC code
+cat(paste0(Text_wide.translated$O.NET.SOC.2010.Title.Translation, " (", Text_wide.translated$O.NET.SOC.2010.Title ,") 的工作任务包括",Text_wide.translated$WorkActivities,
+            "。按重要性排列，要求掌握的技能有",Text_wide.translated$Skills,
+            "；知识包括",Text_wide.translated$Knowledge,"。","\n"),file="SOCparagraph.txt", sep="\n", append=FALSE)
+
+#to do: write code to put the above into a df, delete duplicates, export the spreadsheet, edit, import back in, left_join to the existing df.
+
+
 
 
