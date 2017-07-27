@@ -162,10 +162,17 @@ Text_wide$OJcat[OJ<=3] <- "0-3月"
 
 detach(Text_wide)
 
+CIP_wage=Text_wide%>%filter(RWcat=="初级，2年以下")%>%group_by(Code)%>%
+  summarise(wage=weighted.mean(A_MEAN, TOT_EMP))
 
+attach(CIP_wage)
+CIP_wage$wagecat[wage >150000] <- "15万-20万"
+CIP_wage$wagecat[wage >100000 & wage <= 150000] <- "10万-15万"
+CIP_wage$wagecat[wage >50000 & wage <= 100000] <- "5万-10万"
+CIP_wage$wagecat[wage <50000] <- "5万以下"
+detach(CIP_wage)
 
-
-#######Yuqi Liao -> creating appendix
+#####Yuqi Liao -> creating appendix ####
 
 ##create and export csv files, use google translation, modify translation
 Text_wide_uniqueSOC = Text_wide[!duplicated(Text_wide$O.NET.SOC.2010.Title), ] #so i could get the unique columns of SOC titles
@@ -174,8 +181,8 @@ write.csv(Text_wide_uniqueSOC, file = 'results/Text_wide_uniqueSOC.csv')
 write.csv(Text_major_uniqueElement.Name, file = 'results/Text_major_uniqueElement.Name.csv')
 
 ##create Text_wide_uniqueSOC.translated & Text_major_uniqueElement.Name.translated
-Text_wide_uniqueSOC.translated <- read.csv("/Users/Yuqi/Google Drive/双百计划/Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Text_wide_uniqueSOC.translated.csv")
-Text_major_uniqueElement.Name.translated <- read.csv("/Users/Yuqi/Google Drive/双百计划/Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Text_major_uniqueElement.Name.translated.csv")
+Text_wide_uniqueSOC.translated <- read.csv("../Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Text_wide_uniqueSOC.translated.csv")
+Text_major_uniqueElement.Name.translated <- read.csv("../Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Text_major_uniqueElement.Name.translated.csv")
 Text_wide_uniqueSOC.translated <- Text_wide_uniqueSOC.translated[,c("O.NET.SOC.2010.Title","Final.Translation")]
 
 ##creat Text_major.translated
@@ -219,32 +226,38 @@ Text_wide.translated$OJcat[OJ>=6] <- "1年以上"
 Text_wide.translated$OJcat[OJ>3 & OJ <6] <- "3-12月"
 Text_wide.translated$OJcat[OJ<=3] <- "0-3月"
 
+Text_wide.translated <- Text_wide.translated[order(Code, RW ),]
+
 detach(Text_wide.translated)
 
 
 ##create Text_wide.translated$Code.Translation
-Code.translation <- read.csv("/Users/Yuqi/Google Drive/双百计划/Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Code and Translation.csv")
+Code.translation <- read.csv("../Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Code and Translation.csv")
 
 Text_wide.translated = left_join(Text_wide.translated, Code.translation, by = "Code")
 
 ##Write to result
+Text_wide.translated.1=Text_wide.translated%>%group_by(Code,Code.Translation)%>%
+  summarise(O.NET.SOC.2010.Title.Translation=paste(O.NET.SOC.2010.Title.Translation, collapse=","),
+            RWcat=paste(RWcat,collapse=","),
+            OJcat=paste(OJcat,collapse=","))
+
+Text_wide.translated.1.para = left_join(Text_wide.translated.1, CIP_wage, by="Code")
+
 #intro paragraph for each chinese major (Code.Translation)
-Text_wide.translated.aggregate.SOC <- aggregate(O.NET.SOC.2010.Title.Translation ~ Code.Translation , data = Text_wide.translated, paste, collapse = ", ")
-Text_wide.translated.aggregate.wagecat <- aggregate(wagecat ~ Code.Translation , data = Text_wide.translated, paste, collapse = ", ")
-Text_wide.translated.aggregate.RWcat <- aggregate(RWcat ~ Code.Translation , data = Text_wide.translated, paste, collapse = ", ")
-Text_wide.translated.aggregate.OJcat <- aggregate(OJcat ~ Code.Translation , data = Text_wide.translated, paste, collapse = ", ")
-Text_wide.translated.1.para <- left_join(Text_wide.translated.aggregate.SOC, Text_wide.translated.aggregate.wagecat, by = "Code.Translation")
-Text_wide.translated.1.para <- left_join(Text_wide.translated.1.para, Text_wide.translated.aggregate.RWcat, by = "Code.Translation")
-Text_wide.translated.1.para <- left_join(Text_wide.translated.1.para, Text_wide.translated.aggregate.OJcat, by = "Code.Translation")
 
-cat(paste0("以美国2015年的数据为例", Text_wide.translated.1.para$Code.Translation, "所对应的主要就业岗位包括", Text_wide.translated.1.para$O.NET.SOC.2010.Title.Translation,
-           "。根据美国职业信息库的调查，这些岗位的平均所需要的培训时间为", Text_wide.translated.1.para$OJcat, "。这些岗位所要求的相关工作经验为",Text_wide.translated.1.para$RWcat,"。在美国平均工资区间为", Text_wide.translated.1.para$wagcat, "。这些岗位在中国的平均工资区间为。","\n"),file="firstparagraph.txt", sep="\n", append=FALSE)
+attach(Text_wide.translated.1.para)
+cat(paste0("以美国2015年的数据为例", Code.Translation, "所对应的主要就业岗位包括", O.NET.SOC.2010.Title.Translation,
+           "。根据美国职业信息库的调查,对应的初级岗位在美国平均工资区间为美元", wagecat, "。\n"),file="firstparagraph.txt", sep="\n", append=FALSE)
+detach(Text_wide.translated.1.para)
 
-
+attach(Text_wide.translated)
 #paragraph for each SOC code
-cat(paste0(Text_wide.translated$O.NET.SOC.2010.Title.Translation, " (", Text_wide.translated$O.NET.SOC.2010.Title ,") 的工作任务包括",Text_wide.translated$WorkActivities,
-            "。按重要性排列，要求掌握的技能有",Text_wide.translated$Skills,
-            "；知识包括",Text_wide.translated$Knowledge,"。","\n"),file="SOCparagraph.txt", sep="\n", append=FALSE)
+cat(paste0(Code.Translation,RWcat,"\n",O.NET.SOC.2010.Title.Translation, " (", O.NET.SOC.2010.Title ,") 所需要的培训时间为",
+           OJcat, "。该岗位的工作任务包括",WorkActivities,
+            "。按重要性排列，要求掌握的技能有",Skills,
+            "；知识包括",Knowledge,"。","\n"),file="SOCparagraph.txt", sep="\n", append=FALSE)
+detach(Text_wide.translated)
 
 #to do: write code to put the above into a df, delete duplicates, export the spreadsheet, edit, import back in, left_join to the existing df.
 
