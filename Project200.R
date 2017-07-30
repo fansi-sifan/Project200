@@ -187,7 +187,7 @@ Text_wide_uniqueSOC.translated <- Text_wide_uniqueSOC.translated[,c("O.NET.SOC.2
 
 ##creat Text_major.translated
 Text_major.translated=left_join(Text_major, Text_major_uniqueElement.Name.translated, by="Element.Name") %>%
-  select(-X, -Measure.y, -Google.Translation)
+  select(-Measure.y, -Google.Translation)
 colnames(Text_major.translated)[colnames(Text_major.translated) == 'Final.Translation'] <- 'Element.Name.Translation'
 
 Text_major.translated = left_join(Text_major.translated, Text_wide_uniqueSOC.translated, by = "O.NET.SOC.2010.Title")
@@ -244,22 +244,42 @@ Text_wide.translated.1=Text_wide.translated%>%group_by(Code,Code.Translation)%>%
 
 Text_wide.translated.1.para = left_join(Text_wide.translated.1, CIP_wage, by="Code")
 
-#intro paragraph for each chinese major (Code.Translation)
+###intro paragraph for each chinese major (Code.Translation)
 
 attach(Text_wide.translated.1.para)
-cat(paste0("以美国2015年的数据为例", Code.Translation, "所对应的主要就业岗位包括", O.NET.SOC.2010.Title.Translation,
-           "。根据美国职业信息库的调查,对应的初级岗位在美国平均工资区间为美元", wagecat, "。\n"),file="firstparagraph.txt", sep="\n", append=FALSE)
+cat(paste0("以美国2015年的数据为例，", Code.Translation, "所对应的主要就业岗位包括", O.NET.SOC.2010.Title.Translation,
+           "。根据美国职业信息库的调查,该专业对应的初级岗位在美国平均工资区间为", wagecat, "美元。\n"),file="firstparagraph.txt", sep="\n", append=FALSE)
 detach(Text_wide.translated.1.para)
 
-attach(Text_wide.translated)
-#paragraph for each SOC code
+
+
+
+#create Text_wide.translated.uniqueSOC
+#export Text_wide.translated.uniqueSOC, process it by cleaning the WorkActivities/Skills/Knowledge columns for each occupation, read it back in
+
+##create and export csv files, use google translation, modify translation
+Text_wide.translated.uniqueSOC = Text_wide.translated[!duplicated(Text_wide.translated$O.NET.SOC.2010.Title), -1] #so i could get the unique columns of SOC titles
+write.csv(Text_wide.translated.uniqueSOC, file = "../Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Text_wide_translated_uniqueSOC.csv")
+Text_wide.translated.SOCpara <- read.csv("../Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/Text_wide_translated_uniqueSOC_edited.csv")
+
+Text_wide.translated.uniqueSOC.left2 = Text_wide.translated[, 1:2 ]
+Text_wide.translated.SOCpara <- left_join(Text_wide.translated.uniqueSOC.left2, Text_wide.translated.SOCpara, by="O.NET.SOC.2010.Title")
+Text_wide.translated.SOCpara <- Text_wide.translated.SOCpara[,-17]
+Text_wide.translated.SOCpara <- left_join(Text_wide.translated.SOCpara, Code.translation, by="Code")
+
+
+###paragraph for each SOC code
+attach(Text_wide.translated.SOCpara)
 cat(paste0(Code.Translation,RWcat,"\n",O.NET.SOC.2010.Title.Translation, " (", O.NET.SOC.2010.Title ,") 所需要的培训时间为",
            OJcat, "。该岗位的工作任务包括",WorkActivities,
             "。按重要性排列，要求掌握的技能有",Skills,
             "；知识包括",Knowledge,"。","\n"),file="SOCparagraph.txt", sep="\n", append=FALSE)
-detach(Text_wide.translated)
+detach(Text_wide.translated.SOCpara)
 
-#to do: write code to put the above into a df, delete duplicates, export the spreadsheet, edit, import back in, left_join to the existing df.
+
+
+###appendix table
+write.csv(Text_wide.translated, file = "../Yuqi/专业对应的岗位及技能working folder/redo appendix_072617/appendix_table.csv")
 
 
 
